@@ -22,4 +22,4 @@
 
 *Note: it is also possible to save the file without any changes*
 
-*Note: if you close the file without saving, a temporary file `.bulk_rename` will remain in the directory and an instance of the Bulk Rename Tool will live on in idle state; if you manually delete the file, the program instance will shutdown automatically*
+*Note: if you close the file without saving, a temporary file `.bulk_rename` will remain in the directory and an instance of the Bulk Rename Tool will live on in idle state (until the last instance of VS Code is closed); if you manually delete the file, the program instance will shutdown automatically*
