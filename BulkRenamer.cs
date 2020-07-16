@@ -9,6 +9,12 @@ namespace bulk_rename
 {
     public class BulkRenamer
     {
+        private const string VSCODE_EXECUTABLE = "code.cmd";
+        private const string VSCODE_PROCESS_NAME = "Code";
+
+        private const int WAITTIME_FILEHANDLE = 100;
+        private const int WAITTIME_VSCODE_CLOSED = 60 * 1000;
+
         public const string RENAME_FILE_NAME = ".bulk_rename";
 
         public BulkRenamer(string directory)
@@ -58,7 +64,7 @@ namespace bulk_rename
             watcher.EnableRaisingEvents = true;
 
             // open editor
-            string editorPath = FindExecutable("code.cmd");
+            string editorPath = FindExecutable(VSCODE_EXECUTABLE);
 
             ProcessStartInfo pci = new ProcessStartInfo()
             {
@@ -71,8 +77,12 @@ namespace bulk_rename
 
         public void Wait()
         {
+            Timer timer = new Timer(DeleteIfVsCodeIsClosed, null, WAITTIME_VSCODE_CLOSED, WAITTIME_VSCODE_CLOSED);
+
             lock (watcher)
                 Monitor.Wait(watcher);
+
+            timer.Dispose();
         }
 
         private void RenameFileChanged(object sender, FileSystemEventArgs e)
@@ -81,7 +91,7 @@ namespace bulk_rename
             if (!File.Exists(e.FullPath)) return;
 
             // wait for writing to finish
-            Thread.Sleep(100);
+            Thread.Sleep(WAITTIME_FILEHANDLE);
 
             // get rename file state after change
             List<string> currentRenameFileState = new List<string>();
@@ -123,6 +133,20 @@ namespace bulk_rename
             }
         }
 
+        private void DeleteIfVsCodeIsClosed(object state)
+        {
+            if (!IsVsCodeRunning())
+            {
+                try
+                {
+                    string path = Path.Combine(directory, RENAME_FILE_NAME);
+                    if (File.Exists(path))
+                        File.Delete(path);
+                }
+                catch (IOException) {}
+            }
+        }
+
         private static string FindExecutable(string name)
         {
             string path = Environment.GetEnvironmentVariable("PATH");
@@ -146,6 +170,11 @@ namespace bulk_rename
                     Thread.Sleep(sleepInterval);
                 }
             }
+        }
+
+        private static bool IsVsCodeRunning()
+        {
+            return Process.GetProcessesByName(VSCODE_PROCESS_NAME).Any();
         }
     }
 }
