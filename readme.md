@@ -2,6 +2,7 @@
 
 ## Requirements
 
+- .NET Core SDK ([download](https://dotnet.microsoft.com/download))
 - VS Code
 - `PATH` environment variable contains location of VS Code
 
