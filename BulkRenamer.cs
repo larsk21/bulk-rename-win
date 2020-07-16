@@ -15,13 +15,15 @@ namespace bulk_rename
         private const int WAITTIME_FILEHANDLE = 100;
         private const int WAITTIME_VSCODE_CLOSED = 60 * 1000;
 
+        private enum FileType { Directory, File }
+
         public const string RENAME_FILE_NAME = ".bulk_rename";
 
         public BulkRenamer(string directory)
         {
             this.directory = directory;
 
-            initialRenameFileState = new List<string>();
+            initialRenameFileState = new List<(string, FileType)>();
 
             watcher = new FileSystemWatcher(directory, RENAME_FILE_NAME);
             watcher.Changed += RenameFileChanged;
@@ -29,7 +31,7 @@ namespace bulk_rename
         }
 
         private string directory;
-        private List<string> initialRenameFileState;
+        private List<(string, FileType)> initialRenameFileState;
         private FileSystemWatcher watcher;
 
         public void Rename()
@@ -41,11 +43,11 @@ namespace bulk_rename
             initialRenameFileState.AddRange(
                 Directory
                 .EnumerateDirectories(directory)
-                .Select(item => Path.GetFileName(item) + Path.DirectorySeparatorChar)
+                .Select(item => (Path.GetFileName(item) + Path.DirectorySeparatorChar, FileType.Directory))
                 .Concat(
                     Directory
                     .EnumerateFiles(directory)
-                    .Select(item => Path.GetFileName(item))
+                    .Select(item => (Path.GetFileName(item), FileType.File))
                 )
             );
 
@@ -54,7 +56,7 @@ namespace bulk_rename
 
             // create new rename file
             using (StreamWriter writer = new StreamWriter(renameFile))
-                foreach (string file in initialRenameFileState)
+                foreach ((string file, _) in initialRenameFileState)
                     writer.WriteLine(file);
 
             // make rename file hidden
@@ -103,16 +105,16 @@ namespace bulk_rename
             }
 
             // only look for changed lines (not new or deleted lines)
-            foreach ((string last, string current) in initialRenameFileState.Zip(currentRenameFileState))
+            foreach ((string last, FileType type, string current) in initialRenameFileState.Zip(currentRenameFileState, (last, current) => (last.Item1, last.Item2, current)))
             {
                 if (last == current) continue;
 
                 string lastPath = Path.Combine(directory, last);
                 string currentPath = Path.Combine(directory, current);
 
-                if (Directory.Exists(lastPath))
+                if (type == FileType.Directory)
                     Directory.Move(lastPath, currentPath);
-                else if (File.Exists(lastPath))
+                else if (type == FileType.File)
                     File.Move(lastPath, currentPath);
             }
 
